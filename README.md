@@ -2,7 +2,11 @@
 
 Literally just a little Roomba moving around Lumiverse.
 
-It rolls around the screen, bumps into the edges, turns, and carries on. No settings panel, sounds, chat changes, AI calls, or remote assets. The robot is click-through, so you can use Lumiverse normally. It pauses in hidden tabs and parks when your device requests reduced motion. Disabling the extension removes it completely.
+It rolls around the screen, bumps into the edges, turns, and carries on. No sounds, chat changes, AI calls, or remote assets. The robot is click-through, so you can use Lumiverse normally. It pauses in hidden tabs and parks when your device requests reduced motion. Disabling the extension removes it completely.
+
+## Googly eye mode
+
+Open **Settings → Roomba** and turn on **Googly eye mode** for two wobbling googly eyes. Turn it off for the original Roomba. The choice is saved in Lumiverse extension settings and survives reloads. On older hosts, the toggle appears in the Extensions settings area. Eye motion pauses with the Roomba and respects reduced motion.
 
 ## Install
 

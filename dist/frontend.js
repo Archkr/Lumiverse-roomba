@@ -67,9 +67,92 @@ var STYLES = `
 .lumi-roomba-brush i:nth-child(2) { transform:rotate(120deg); }
 .lumi-roomba-brush i:nth-child(3) { transform:rotate(240deg); }
 .lumi-roomba-stage[data-paused] .lumi-roomba-brush { animation-play-state:paused; }
+.lumi-roomba-eyes { display:none; position:absolute; left:31px; top:12px; width:15px; height:33px; }
+.lumi-roomba-googly .lumi-roomba-eyes { display:block; }
+.lumi-roomba-eye { position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
+.lumi-roomba-eye:nth-child(2) { top:17px; left:-1px; transform:rotate(12deg); }
+.lumi-roomba-pupil { position:absolute; left:4px; top:4px; width:7px; height:8px; border-radius:50%; background:radial-gradient(circle at 30% 25%,#fff 0 10%,#111 18%); animation:lumi-roomba-googly 1.1s ease-in-out infinite alternate; }
+.lumi-roomba-eye:nth-child(2) .lumi-roomba-pupil { animation-duration:.87s; animation-delay:-.45s; }
+.lumi-roomba-stage[data-paused] .lumi-roomba-pupil { animation-play-state:paused; }
+.lumi-roomba-settings { padding:16px; color:var(--lumiverse-text,inherit); }
+.lumi-roomba-settings h3 { margin:0 0 16px; }
+.lumi-roomba-option { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; }
+.lumi-roomba-option input { width:18px; height:18px; accent-color:var(--lumiverse-primary,#a8ec83); }
+.lumi-roomba-settings p { font-size:13px; line-height:1.5; opacity:.75; }
+@keyframes lumi-roomba-googly { 0% { transform:translate(2px,-3px); } 35% { transform:translate(-3px,1px); } 70% { transform:translate(1px,3px); } 100% { transform:translate(3px,0); } }
 @keyframes lumi-roomba-sweep { to { transform:rotate(360deg); } }
-@media (prefers-reduced-motion:reduce) { .lumi-roomba-brush { animation:none; } }
+@media (prefers-reduced-motion:reduce) { .lumi-roomba-brush, .lumi-roomba-pupil { animation:none; } }
 `;
+
+// src/googly.ts
+var KEY = "roomba:googly-eyes";
+function mountGooglySettings(ctx, robot) {
+  const tab = ctx.ui.registerSettingsTab?.({
+    id: "lumi_roomba",
+    title: "Roomba",
+    shortName: "Roomba",
+    description: "Give your Roomba googly eyes.",
+    keywords: ["roomba", "googly", "eyes"]
+  });
+  const panel = ctx.dom.createElement("section", { class: "lumi-roomba-settings" });
+  const heading = ctx.dom.createElement("h3");
+  heading.textContent = "Roomba";
+  const label = ctx.dom.createElement("label", { class: "lumi-roomba-option" });
+  const toggle = ctx.dom.createElement("input", { type: "checkbox" });
+  const copy = ctx.dom.createElement("span");
+  copy.textContent = "Googly eye mode";
+  label.append(toggle, copy);
+  const help = ctx.dom.createElement("p");
+  help.textContent = "Two googly eyes. Same important cleaning mission.";
+  const status = ctx.dom.createElement("p", { role: "status" });
+  panel.append(heading, label, help, status);
+  (tab?.root ?? ctx.ui.mount("settings_extensions")).append(panel);
+  let disposed = false;
+  let edited = false;
+  let saveQueue = Promise.resolve();
+  const apply = (enabled) => {
+    toggle.checked = enabled;
+    robot.classList.toggle("lumi-roomba-googly", enabled);
+  };
+  const onChange = () => {
+    edited = true;
+    const enabled = toggle.checked;
+    apply(enabled);
+    if (!ctx.settings) {
+      status.textContent = "This host keeps the choice until the extension reloads.";
+      return;
+    }
+    status.textContent = "Saving…";
+    saveQueue = saveQueue.then(async () => {
+      if (disposed)
+        return;
+      try {
+        await ctx.settings.set(KEY, enabled);
+        if (!disposed && toggle.checked === enabled)
+          status.textContent = "";
+      } catch {
+        if (!disposed)
+          status.textContent = "Could not save. Toggle again to retry.";
+      }
+    });
+  };
+  toggle.addEventListener("change", onChange);
+  if (ctx.settings) {
+    ctx.settings.get(KEY).then((value) => {
+      if (!disposed && !edited)
+        apply(value === true);
+    }).catch(() => {
+      if (!disposed && !edited)
+        status.textContent = "Could not load your saved choice. You can still toggle the eyes.";
+    });
+  }
+  return () => {
+    disposed = true;
+    toggle.removeEventListener("change", onChange);
+    panel.remove();
+    tab?.destroy();
+  };
+}
 
 // src/frontend.ts
 function setup(ctx) {
@@ -84,9 +167,16 @@ function setup(ctx) {
   for (const part of ["bumper", "plate", "clean", "sensor", "led"]) {
     body.append(ctx.dom.createElement("div", { class: `lumi-roomba-${part}` }));
   }
-  robot.append(brush, body);
+  const eyes = ctx.dom.createElement("div", { class: "lumi-roomba-eyes" });
+  for (let i = 0;i < 2; i++) {
+    const eye = ctx.dom.createElement("div", { class: "lumi-roomba-eye" });
+    eye.append(ctx.dom.createElement("div", { class: "lumi-roomba-pupil" }));
+    eyes.append(eye);
+  }
+  robot.append(brush, body, eyes);
   stage.append(robot);
   mount.root.append(stage);
+  const removeGooglySettings = mountGooglySettings(ctx, robot);
   const viewport = window.visualViewport;
   const bounds = () => ({ left: viewport?.offsetLeft ?? 0, top: viewport?.offsetTop ?? 0, width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight });
   let state = createRobot(bounds());
@@ -137,6 +227,7 @@ function setup(ctx) {
     viewport?.removeEventListener("resize", sync);
     viewport?.removeEventListener("scroll", sync);
     reducedMotion.removeEventListener("change", sync);
+    removeGooglySettings();
     stage.remove();
     removeStyle();
     mount.destroy();

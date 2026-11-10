@@ -1,6 +1,7 @@
 import type { SpindleFrontendContext } from 'lumiverse-spindle-types';
 import { clampRobot, createRobot, stepRobot, type Bounds } from './motion';
 import { STYLES } from './styles';
+import { mountGooglySettings } from './googly';
 
 export function setup(ctx: SpindleFrontendContext): () => void {
   const mount = ctx.ui.mountApp({ position: 'app-overlay' });
@@ -14,9 +15,16 @@ export function setup(ctx: SpindleFrontendContext): () => void {
   for (const part of ['bumper', 'plate', 'clean', 'sensor', 'led']) {
     body.append(ctx.dom.createElement('div', { class: `lumi-roomba-${part}` }));
   }
-  robot.append(brush, body);
+  const eyes = ctx.dom.createElement('div', { class: 'lumi-roomba-eyes' });
+  for (let i = 0; i < 2; i++) {
+    const eye = ctx.dom.createElement('div', { class: 'lumi-roomba-eye' });
+    eye.append(ctx.dom.createElement('div', { class: 'lumi-roomba-pupil' }));
+    eyes.append(eye);
+  }
+  robot.append(brush, body, eyes);
   stage.append(robot);
   mount.root.append(stage);
+  const removeGooglySettings = mountGooglySettings(ctx, robot);
 
   const viewport = window.visualViewport;
   const bounds = (): Bounds => ({ left: viewport?.offsetLeft ?? 0, top: viewport?.offsetTop ?? 0, width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight });
@@ -60,6 +68,7 @@ export function setup(ctx: SpindleFrontendContext): () => void {
     viewport?.removeEventListener('resize', sync);
     viewport?.removeEventListener('scroll', sync);
     reducedMotion.removeEventListener('change', sync);
+    removeGooglySettings();
     stage.remove();
     removeStyle();
     mount.destroy();
