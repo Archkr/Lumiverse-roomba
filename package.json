@@ -1,0 +1,17 @@
+{
+  "name": "lumiverse-roomba",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/frontend.ts --outfile dist/frontend.js --target browser",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "preview": "bun scripts/preview.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "lumiverse-spindle-types": "0.6.37",
+    "typescript": "^5.9.3"
+  }
+}

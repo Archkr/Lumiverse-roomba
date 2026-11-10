@@ -1,0 +1,12 @@
+{
+  "identifier": "lumi_roomba",
+  "version": "1.0.0",
+  "name": "Roomba",
+  "author": "Archkr",
+  "github": "https://github.com/Archkr/Lumiverse-Roomba",
+  "homepage": "https://lumiverse.chat",
+  "description": "Literally just a little Roomba moving around.",
+  "permissions": ["app_manipulation"],
+  "entry_frontend": "dist/frontend.js",
+  "minimum_lumiverse_version": "1.2.4"
+}
