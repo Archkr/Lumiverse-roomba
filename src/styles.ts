@@ -15,7 +15,7 @@ export const STYLES = `
 .lumi-roomba-stage[data-paused] .lumi-roomba-brush { animation-play-state:paused; }
 .lumi-roomba-eyes { display:none; position:absolute; left:31px; top:12px; width:15px; height:33px; }
 .lumi-roomba-googly .lumi-roomba-eyes { display:block; }
-.lumi-roomba-eye { position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
+.lumi-roomba-eye { box-sizing:content-box; position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
 .lumi-roomba-eye:nth-child(2) { top:17px; left:-1px; }
 .lumi-roomba-pupil { position:absolute; left:3.5px; top:4px; width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 30% 25%,#fff 0 10%,#111 18%); }
 .lumi-roomba-settings { padding:16px; color:var(--lumiverse-text,inherit); }

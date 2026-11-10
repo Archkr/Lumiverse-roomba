@@ -69,7 +69,7 @@ var STYLES = `
 .lumi-roomba-stage[data-paused] .lumi-roomba-brush { animation-play-state:paused; }
 .lumi-roomba-eyes { display:none; position:absolute; left:31px; top:12px; width:15px; height:33px; }
 .lumi-roomba-googly .lumi-roomba-eyes { display:block; }
-.lumi-roomba-eye { position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
+.lumi-roomba-eye { box-sizing:content-box; position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
 .lumi-roomba-eye:nth-child(2) { top:17px; left:-1px; }
 .lumi-roomba-pupil { position:absolute; left:3.5px; top:4px; width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 30% 25%,#fff 0 10%,#111 18%); }
 .lumi-roomba-settings { padding:16px; color:var(--lumiverse-text,inherit); }
@@ -145,7 +145,8 @@ function mountGooglySettings(ctx, robot) {
 
 // src/eye-physics.ts
 var PUPIL_TRAVEL = 3.2;
-var createPupil = () => ({ x: 0, y: 0, vx: 0, vy: 0 });
+var GRAVITY = 140;
+var createPupil = () => ({ x: 0, y: PUPIL_TRAVEL, vx: 0, vy: 0 });
 function center(pose, eye) {
   const x = eye === 0 ? 10 : 9;
   const y = eye === 0 ? -8.5 : 8.5;
@@ -167,7 +168,7 @@ function stepPupil(pupil, before, after, elapsed, eye) {
   const drag = Math.exp(-(eye === 0 ? 5 : 6.5) * h);
   for (let i = 0;i < steps; i++) {
     next.vx = housingVx + (next.vx - housingVx) * drag;
-    next.vy = housingVy + (next.vy - housingVy) * drag;
+    next.vy = housingVy + (next.vy - housingVy) * drag + GRAVITY * h;
     next.x += (next.vx - housingVx) * h;
     next.y += (next.vy - housingVy) * h;
     const distance = Math.hypot(next.x, next.y);

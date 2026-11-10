@@ -4,7 +4,10 @@ type Pose = Pick<Robot, 'x' | 'y' | 'heading'>;
 /** Offset from the eye's center and pupil velocity, both in screen coordinates. */
 export interface Pupil { x: number; y: number; vx: number; vy: number }
 export const PUPIL_TRAVEL = 3.2;
-export const createPupil = (): Pupil => ({ x: 0, y: 0, vx: 0, vy: 0 });
+// Screen-down gravity makes a loose pupil rest on the lower rim, even when
+// motion is disabled. It must never be initialized/reset to an artificial center.
+const GRAVITY = 140;
+export const createPupil = (): Pupil => ({ x: 0, y: PUPIL_TRAVEL, vx: 0, vy: 0 });
 
 function center(pose: Pose, eye: number) {
   // Match the centers of the two eye housings relative to the robot's pivot.
@@ -15,8 +18,9 @@ function center(pose: Pose, eye: number) {
   return { x: pose.x + 29 + x * c - y * s, y: pose.y + 29 + x * s + y * c };
 }
 
-/** A loose disc in a moving circular housing: inertia, friction, and rim impacts.
- * No spring, random force, gravity, or clock-driven oscillation drives the pupil.
+/** A loose disc in a moving circular housing: gravity, inertia, friction, and rim impacts.
+ * Screen-down gravity settles the pupil at the rim; there is no centering spring
+ * or clock-driven oscillation.
  * Screen coordinates preserve its momentum while the housing turns underneath it.
  */
 export function stepPupil(pupil: Pupil, before: Pose, after: Pose, elapsed: number, eye: number): Pupil {
@@ -32,7 +36,7 @@ export function stepPupil(pupil: Pupil, before: Pose, after: Pose, elapsed: numb
   const drag = Math.exp(-(eye === 0 ? 5 : 6.5) * h);
   for (let i = 0; i < steps; i++) {
     next.vx = housingVx + (next.vx - housingVx) * drag;
-    next.vy = housingVy + (next.vy - housingVy) * drag;
+    next.vy = housingVy + (next.vy - housingVy) * drag + GRAVITY * h;
     next.x += (next.vx - housingVx) * h;
     next.y += (next.vy - housingVy) * h;
     const distance = Math.hypot(next.x, next.y);

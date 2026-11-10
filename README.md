@@ -6,7 +6,7 @@ It rolls around the screen, bumps into the edges, turns, and carries on. No soun
 
 ## Googly eye mode
 
-Open the **Extensions settings**, as with LumiWeather, and turn on **Googly eye mode** for two loose googly pupils that react to acceleration, braking, and turning. Turn it off for the original Roomba. The choice is saved in Lumiverse extension settings and survives reloads. The pupils use inertia, friction, and collisions with the eye rims, with no looping animation. Eye physics pauses with the Roomba and respects reduced motion.
+Open the **Extensions settings**, as with LumiWeather, and turn on **Googly eye mode** for two loose googly pupils that react to acceleration, braking, and turning. Turn it off for the original Roomba. The choice is saved in Lumiverse extension settings and survives reloads. Gravity settles the pupils against the bottom rims. They use inertia, friction, and collisions with the eye rims, with no looping animation. Eye physics pauses with the Roomba and respects reduced motion.
 
 ## Install
 
