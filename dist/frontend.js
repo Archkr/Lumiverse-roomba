@@ -70,30 +70,20 @@ var STYLES = `
 .lumi-roomba-eyes { display:none; position:absolute; left:31px; top:12px; width:15px; height:33px; }
 .lumi-roomba-googly .lumi-roomba-eyes { display:block; }
 .lumi-roomba-eye { position:absolute; width:14px; height:15px; border:1px solid #b9bec4; border-radius:50%; background:radial-gradient(circle at 35% 25%,white 45%,#dce1e6); box-shadow:0 2px 3px #0007; }
-.lumi-roomba-eye:nth-child(2) { top:17px; left:-1px; transform:rotate(12deg); }
-.lumi-roomba-pupil { position:absolute; left:4px; top:4px; width:7px; height:8px; border-radius:50%; background:radial-gradient(circle at 30% 25%,#fff 0 10%,#111 18%); animation:lumi-roomba-googly 1.1s ease-in-out infinite alternate; }
-.lumi-roomba-eye:nth-child(2) .lumi-roomba-pupil { animation-duration:.87s; animation-delay:-.45s; }
-.lumi-roomba-stage[data-paused] .lumi-roomba-pupil { animation-play-state:paused; }
+.lumi-roomba-eye:nth-child(2) { top:17px; left:-1px; }
+.lumi-roomba-pupil { position:absolute; left:3.5px; top:4px; width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 30% 25%,#fff 0 10%,#111 18%); }
 .lumi-roomba-settings { padding:16px; color:var(--lumiverse-text,inherit); }
 .lumi-roomba-settings h3 { margin:0 0 16px; }
 .lumi-roomba-option { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; }
 .lumi-roomba-option input { width:18px; height:18px; accent-color:var(--lumiverse-primary,#a8ec83); }
 .lumi-roomba-settings p { font-size:13px; line-height:1.5; opacity:.75; }
-@keyframes lumi-roomba-googly { 0% { transform:translate(2px,-3px); } 35% { transform:translate(-3px,1px); } 70% { transform:translate(1px,3px); } 100% { transform:translate(3px,0); } }
 @keyframes lumi-roomba-sweep { to { transform:rotate(360deg); } }
-@media (prefers-reduced-motion:reduce) { .lumi-roomba-brush, .lumi-roomba-pupil { animation:none; } }
+@media (prefers-reduced-motion:reduce) { .lumi-roomba-brush { animation:none; } }
 `;
 
 // src/googly.ts
 var KEY = "roomba:googly-eyes";
 function mountGooglySettings(ctx, robot) {
-  const tab = ctx.ui.registerSettingsTab?.({
-    id: "lumi_roomba",
-    title: "Roomba",
-    shortName: "Roomba",
-    description: "Give your Roomba googly eyes.",
-    keywords: ["roomba", "googly", "eyes"]
-  });
   const panel = ctx.dom.createElement("section", { class: "lumi-roomba-settings" });
   const heading = ctx.dom.createElement("h3");
   heading.textContent = "Roomba";
@@ -106,7 +96,7 @@ function mountGooglySettings(ctx, robot) {
   help.textContent = "Two googly eyes. Same important cleaning mission.";
   const status = ctx.dom.createElement("p", { role: "status" });
   panel.append(heading, label, help, status);
-  (tab?.root ?? ctx.ui.mount("settings_extensions")).append(panel);
+  ctx.ui.mount("settings_extensions").append(panel);
   let disposed = false;
   let edited = false;
   let saveQueue = Promise.resolve();
@@ -150,8 +140,56 @@ function mountGooglySettings(ctx, robot) {
     disposed = true;
     toggle.removeEventListener("change", onChange);
     panel.remove();
-    tab?.destroy();
   };
+}
+
+// src/eye-physics.ts
+var PUPIL_TRAVEL = 3.2;
+var createPupil = () => ({ x: 0, y: 0, vx: 0, vy: 0 });
+function center(pose, eye) {
+  const x = eye === 0 ? 10 : 9;
+  const y = eye === 0 ? -8.5 : 8.5;
+  const c = Math.cos(pose.heading);
+  const s = Math.sin(pose.heading);
+  return { x: pose.x + 29 + x * c - y * s, y: pose.y + 29 + x * s + y * c };
+}
+function stepPupil(pupil, before, after, elapsed, eye) {
+  const dt = Math.max(0, Math.min(0.05, elapsed));
+  if (!dt)
+    return { ...pupil };
+  const oldCenter = center(before, eye);
+  const newCenter = center(after, eye);
+  const housingVx = (newCenter.x - oldCenter.x) / dt;
+  const housingVy = (newCenter.y - oldCenter.y) / dt;
+  const next = { ...pupil };
+  const steps = Math.ceil(dt * 240);
+  const h = dt / steps;
+  const drag = Math.exp(-(eye === 0 ? 5 : 6.5) * h);
+  for (let i = 0;i < steps; i++) {
+    next.vx = housingVx + (next.vx - housingVx) * drag;
+    next.vy = housingVy + (next.vy - housingVy) * drag;
+    next.x += (next.vx - housingVx) * h;
+    next.y += (next.vy - housingVy) * h;
+    const distance = Math.hypot(next.x, next.y);
+    if (distance > PUPIL_TRAVEL) {
+      const nx = next.x / distance;
+      const ny = next.y / distance;
+      next.x = nx * PUPIL_TRAVEL;
+      next.y = ny * PUPIL_TRAVEL;
+      const outwardSpeed = (next.vx - housingVx) * nx + (next.vy - housingVy) * ny;
+      if (outwardSpeed > 0) {
+        const restitution = outwardSpeed < 1 ? 0 : 0.38;
+        next.vx -= (1 + restitution) * outwardSpeed * nx;
+        next.vy -= (1 + restitution) * outwardSpeed * ny;
+      }
+    }
+  }
+  return next;
+}
+function pupilOffset(pupil, heading) {
+  const c = Math.cos(heading);
+  const s = Math.sin(heading);
+  return { x: pupil.x * c + pupil.y * s, y: -pupil.x * s + pupil.y * c };
 }
 
 // src/frontend.ts
@@ -167,10 +205,13 @@ function setup(ctx) {
   for (const part of ["bumper", "plate", "clean", "sensor", "led"]) {
     body.append(ctx.dom.createElement("div", { class: `lumi-roomba-${part}` }));
   }
+  const pupilElements = [];
   const eyes = ctx.dom.createElement("div", { class: "lumi-roomba-eyes" });
   for (let i = 0;i < 2; i++) {
     const eye = ctx.dom.createElement("div", { class: "lumi-roomba-eye" });
-    eye.append(ctx.dom.createElement("div", { class: "lumi-roomba-pupil" }));
+    const pupil = ctx.dom.createElement("div", { class: "lumi-roomba-pupil" });
+    pupilElements.push(pupil);
+    eye.append(pupil);
     eyes.append(eye);
   }
   robot.append(brush, body, eyes);
@@ -180,18 +221,26 @@ function setup(ctx) {
   const viewport = window.visualViewport;
   const bounds = () => ({ left: viewport?.offsetLeft ?? 0, top: viewport?.offsetTop ?? 0, width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight });
   let state = createRobot(bounds());
+  let pupils = [createPupil(), createPupil()];
   let frame = null;
   let previous = null;
   let disposed = false;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const paint = () => {
     robot.style.transform = `translate3d(${state.x}px,${state.y}px,0) rotate(${state.heading}rad)`;
+    pupilElements.forEach((element, index) => {
+      const offset = pupilOffset(pupils[index], state.heading);
+      element.style.transform = `translate(${offset.x}px,${offset.y}px)`;
+    });
   };
   const tick = (now) => {
     frame = null;
     if (disposed)
       return;
-    state = stepRobot(state, bounds(), previous === null ? 0 : (now - previous) / 1000);
+    const elapsed = previous === null ? 0 : (now - previous) / 1000;
+    const before = state;
+    state = stepRobot(state, bounds(), elapsed);
+    pupils = robot.classList.contains("lumi-roomba-googly") ? pupils.map((pupil, index) => stepPupil(pupil, before, state, elapsed, index)) : [createPupil(), createPupil()];
     previous = now;
     paint();
     frame = window.requestAnimationFrame(tick);
@@ -204,6 +253,7 @@ function setup(ctx) {
     frame = null;
     previous = null;
     state = clampRobot(state, bounds());
+    pupils = pupils.map((pupil) => ({ ...pupil, vx: 0, vy: 0 }));
     paint();
     const paused = document.hidden || reducedMotion.matches;
     stage.toggleAttribute("data-paused", paused);

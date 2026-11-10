@@ -4,10 +4,6 @@ const KEY = 'roomba:googly-eyes';
 
 /** An optional costume, saved in the extension's account-scoped settings. */
 export function mountGooglySettings(ctx: SpindleFrontendContext, robot: HTMLElement): () => void {
-  const tab = ctx.ui.registerSettingsTab?.({
-    id: 'lumi_roomba', title: 'Roomba', shortName: 'Roomba',
-    description: 'Give your Roomba googly eyes.', keywords: ['roomba', 'googly', 'eyes'],
-  });
   const panel = ctx.dom.createElement('section', { class: 'lumi-roomba-settings' });
   const heading = ctx.dom.createElement('h3');
   heading.textContent = 'Roomba';
@@ -20,7 +16,7 @@ export function mountGooglySettings(ctx: SpindleFrontendContext, robot: HTMLElem
   help.textContent = 'Two googly eyes. Same important cleaning mission.';
   const status = ctx.dom.createElement('p', { role: 'status' });
   panel.append(heading, label, help, status);
-  (tab?.root ?? ctx.ui.mount('settings_extensions')).append(panel);
+  ctx.ui.mount('settings_extensions').append(panel);
 
   let disposed = false;
   let edited = false;
@@ -62,6 +58,5 @@ export function mountGooglySettings(ctx: SpindleFrontendContext, robot: HTMLElem
     disposed = true;
     toggle.removeEventListener('change', onChange);
     panel.remove();
-    tab?.destroy();
   };
 }
